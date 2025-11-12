@@ -1,12 +1,25 @@
 (function(){
-  const DELAY_MS = 12000; // 12 seconden vertraging
-  const MOBILE_PCT = 0.75;
+  const DELAY_MS = 12000; // 12 sec
   const COOKIE_SKIP_RE = /(gvh_is_subscriber|gvh_is_paid)=1/;
   const SET_SUB_COOKIE = "gvh_is_subscriber=1; path=/; max-age=31536000; SameSite=Lax";
   const ENORMAIL_ACTION = "https://app.enormail.eu/subscribe/e78032ce963c86af49ea6e394f594942";
 
   if (window.__GVH_POPUP_INIT__) return;
   window.__GVH_POPUP_INIT__ = true;
+
+  // --- URL guard: primaire categorieën + Stilstaan-hub ---
+  const path = (location.pathname || "/").replace(/\/+$/, "/");
+  const seg = path.split("/").filter(Boolean);
+
+  const PRIMARY_CATS = new Set(["jezelf","keuzes","vasthouden","vrij-maken","aanname","aannames","loslaten"]);
+  const STILSTAAN_PREFIX = "stilstaan-om-te-groeien-inspiratie-voor-persoonlijke-groei";
+  const EXCLUDE_RE = /(bedank|thank|checkout|order|betaal|subscribe|cart|pay)/i;
+
+  const inPrimaryCat = seg.length >= 2 && PRIMARY_CATS.has(seg[0]);
+  // Voor Stilstaan: minimaal 3 segmenten (prefix / subgroep / artikel)
+  const inStilstaanHub = seg[0] === STILSTAAN_PREFIX && seg.length >= 3;
+
+  if ((!inPrimaryCat && !inStilstaanHub) || EXCLUDE_RE.test(path)) return;
 
   function injectCSS(){
     const css = `
@@ -47,12 +60,15 @@
 
     const n=document.createElement('input');
     n.type='text'; n.name='name'; n.required=true; n.placeholder='Voornaam';
+    n.style.cssText='padding:.6rem .9rem;border:1px solid #ccc;border-radius:8px';
     const e=document.createElement('input');
     e.type='email'; e.name='email'; e.required=true; e.placeholder='E-mailadres';
+    e.style.cssText='padding:.6rem .9rem;border:1px solid #ccc;border-radius:8px';
     const s=document.createElement('input');
     s.type='submit'; s.value='Ja, ik lees graag mee';
+    s.style.cssText='padding:.6rem 1.2rem;background:#e6dfd1;border:0;border-radius:8px;cursor:pointer';
 
-    form.append(n); form.append(e); form.append(s);
+    form.append(n,e,s);
     card.append(close,title,desc,quote,lead,form);
     wrap.append(card);
     document.body.append(bg,wrap);
@@ -64,12 +80,12 @@
     bg.onclick=(ev)=>{if(ev.target===bg)hide()};
     form.onsubmit=()=>{document.cookie=SET_SUB_COOKIE};
 
-    // popup verschijnt na 12 seconden
+    // Toon na 12s
     setTimeout(()=>{show()},DELAY_MS);
   }
 
   function run(){
-    if(COOKIE_SKIP_RE.test(document.cookie||''))return;
+    if (COOKIE_SKIP_RE.test(document.cookie||'')) return;
     injectCSS();
     injectHTML();
   }
